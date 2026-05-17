@@ -1128,6 +1128,7 @@ export default function App(){
   const[viewDay,setViewDay]=useState(1);
   const[modal,setModal]=useState(null);
   const[theme,setTheme]=useState(()=>{try{return localStorage.getItem('kcr_theme')||'dark';}catch{return'dark';}});
+  const dayBarRef=useRef(null);
   const[progress,setProgress]=useState(()=>{
     try{const s=localStorage.getItem('kcr_4wk');if(s){const p=JSON.parse(s);Object.keys(p).forEach(k=>{p[k].completed=new Set(p[k].completed||[]);});return p;}}catch{}return{};
   });
@@ -1154,6 +1155,15 @@ export default function App(){
   const doneCount=Object.values(progress).filter(d=>d.done).length;
   const streak=(()=>{let s=0;for(let d=1;d<=PLAN.length;d++){if(progress[d]?.done)s++;else break;}return s;})();
   const latestWeight=(()=>{for(let d=PLAN.length;d>=1;d--){const w=progress[d]?.bodyweight;if(w)return w;}return null;})();
+  const lastDone=(()=>{let m=0;for(let d=1;d<=PLAN.length;d++){if(progress[d]?.done)m=d;}return m;})();
+  useEffect(()=>{
+    if(tab!=='today')return;
+    const c=dayBarRef.current;
+    if(!c)return;
+    const btn=c.children[Math.max(0,lastDone-1)];
+    if(!btn)return;
+    c.scrollTo({left:Math.max(0,btn.offsetLeft-c.offsetLeft-(c.clientWidth-btn.offsetWidth)/2),behavior:'auto'});
+  },[tab,lastDone]);
 
   const sectionMeta={
     primer:{label:'Daily Primer',icon:'flame',time:'6 min · before every session'},
@@ -1167,8 +1177,8 @@ export default function App(){
   const typeLabel={training:'Training',walk:'Active Recovery',pump:'Optional',rest:'Rest Day'}[plan.type];
 
   return(
-    <div style={{maxWidth:480,margin:'0 auto',minHeight:'100vh',paddingBottom:80}}>
-      <div style={{padding:'16px 20px 8px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+    <div style={{maxWidth:480,margin:'0 auto',minHeight:'100vh',paddingBottom:'calc(80px + env(safe-area-inset-bottom))'}}>
+      <div style={{padding:'calc(16px + env(safe-area-inset-top)) 20px 8px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div>
           <div style={{fontSize:11,color:T.textMuted,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.08em'}}>Return to Training</div>
           <div style={{fontSize:21,fontWeight:800,marginTop:2}}>4-Week Program</div>
@@ -1186,7 +1196,7 @@ export default function App(){
 
       {tab==='today'&&(
         <div style={{padding:'0 16px'}}>
-          <div style={{display:'flex',gap:6,overflowX:'auto',paddingBottom:10,paddingTop:4,scrollbarWidth:'none'}}>
+          <div ref={dayBarRef} style={{display:'flex',gap:6,overflowX:'auto',paddingBottom:10,paddingTop:4,scrollbarWidth:'none'}}>
             {PLAN.map((p,i)=>{const d=i+1,done=progress[d]?.done,isView=d===viewDay;return(<button key={d} onClick={()=>setViewDay(d)} style={{flexShrink:0,width:40,height:40,borderRadius:12,border:`2px solid ${isView?p.color:'transparent'}`,background:done?T.greenBg:isView?p.color+'20':T.card,color:isView?T.text:T.textSec,fontSize:13,fontWeight:isView?800:500,cursor:'pointer'}}>{done?'✓':d}</button>);})}
           </div>
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,padding:18,marginBottom:12}}>
@@ -1281,7 +1291,7 @@ export default function App(){
 
       {modal&&<ExModal exId={modal} onClose={()=>setModal(null)}/>}
 
-      <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:480,background:T.surface,borderTop:`1px solid ${T.border}`,display:'flex',padding:'8px 0',zIndex:99}}>
+      <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:480,background:T.surface,borderTop:`1px solid ${T.border}`,display:'flex',padding:'8px 0 calc(8px + env(safe-area-inset-bottom))',zIndex:99}}>
         {[{id:'today',label:'Today',icon:'today'},{id:'library',label:'Library',icon:'library'},{id:'timeline',label:'Timeline',icon:'timeline'},{id:'progress',label:'Progress',icon:'progress'}].map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,background:'none',border:'none',cursor:'pointer',padding:'5px 0',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
             <Ico name={t.icon} size={21} color={tab===t.id?T.accent:T.textMuted}/>
